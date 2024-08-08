@@ -1,0 +1,11 @@
+[package]
+name = "runbench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.9", features = ["derive"] }
+dotenvy_macro = "0.15.7"
+sqlx = { version = "0.8.0", features = ["sqlite", "runtime-tokio"] }
+tokio = {version = "1.38.1", features = ["full"] }
