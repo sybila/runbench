@@ -10,6 +10,8 @@ const FILE_PLACEHOLDER: &str = "@bench_file";
 enum Command {
     Run {
         #[clap(short, long)]
+        run_name: String,
+        #[clap(short, long)]
         dir_path: String,
         #[clap(short, long)]
         command: String,
@@ -43,25 +45,24 @@ struct Run {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let Command::Run {
+        run_name,
+        dir_path,
+        command,
+        final_cutoff_seconds,
+    } = Cli::parse().command;
 
     let pool = create_pool().await?;
 
     // sometimes, the write is not persisted to the db if not behind a transaction for some reason
     // todo remove the tx (correct the ^issue) to improve performance
     let mut tx = pool.begin().await?;
-    let run_id = sqlx::query_scalar!("insert into runs default values returning id;")
+    let run_id = sqlx::query_scalar!("insert into runs (name) values (?) returning id;", run_name)
         .fetch_one(tx.as_mut())
         .await?;
     tx.commit().await?;
 
     println!("RUNNING BENCH WITH run_id = {}", run_id);
-
-    let Command::Run {
-        dir_path,
-        command,
-        final_cutoff_seconds,
-    } = cli.command;
 
     let files = std::fs::read_dir(dir_path)?
         .map(|entry| entry.unwrap().path().to_str().unwrap().to_owned())
@@ -113,14 +114,16 @@ async fn bench_loop(
 
             let db_timeout_seconds = timeout_seconds as i64;
             let db_success = out.status.success();
+            let stdout = out.stdout;
+            let stderr = out.stderr;
 
             let mut tx = pool
                 .begin()
                 .await
                 .expect("transaction should be possible to start");
 
-            sqlx::query!("insert into attempts (run_id, input_file, timeout_seconds, success, time_used_seconds) values (?, ?, ?, ?, ?);",
-                run_id, file, db_timeout_seconds, db_success, time_used_seconds)
+            sqlx::query!("insert into attempts (run_id, input_file, timeout_seconds, success, time_used_seconds, stdout, stderr) values (?, ?, ?, ?, ?, ?, ?);",
+                run_id, file, db_timeout_seconds, db_success, time_used_seconds, stdout, stderr)
                 .execute(tx.as_mut())
                 .await
                 .expect("insert should not fail");
