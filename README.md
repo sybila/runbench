@@ -19,7 +19,7 @@ or just create a new db & execute the commands in the [migration file](./migrati
 
 ## usage
 
-`runbench` provides hooks you up with a placeholder string `@bench_file` for you to use in the command you want to test the "performance" of, and runs this command repeatedly with each file in the directory you specify
+`runbench` hooks you up with a placeholder string `@bench_file` for you to use in the command you want to test the "performance" of, and runs this command repeatedly with each file in the directory you specify
 
 lets say we want to test the performance of the following *callable* (ensure it is executable, eg `chmod u+x` it)
 
@@ -30,7 +30,7 @@ lets say we want to test the performance of the following *callable* (ensure it 
 you can do so by running
 
 ```sh
-cargo run -- run --dir-path ./demo/dataset --command "./demo/your_program @bench_file"
+cargo run -- run --run-name "your_run_name" --dir-path ./demo/dataset --command "./demo/your_program @bench_file"
 ```
 
 ## inspecting the results
@@ -64,3 +64,11 @@ select input_file, time_used_seconds from attempts where run_id = 1 and success 
 |-|-|
 |./dataset/example0|5|
 |./dataset/example1|5|
+
+another usecase is to run `runbench` with different scripts/solutions over the same input files. you can then compare the "performance" of the solutions via eg
+
+```sql
+select * from (select run_id, count(run_id) from attempts where success = true group by run_id) as data join runs on data.run_id = runs.id;
+```
+
+to see how much of the inputs each of the solutions managed to solve (including the "metadata" - name of the run by joining with `runs` table)
