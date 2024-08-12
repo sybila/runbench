@@ -32,5 +32,5 @@ _run_*
 # .env
 
 # db
-runbench_sqlite_db
+# runbench_sqlite_db # include initialized db -> no need to run migrations etc
 runbench_sqlite_db-journal
