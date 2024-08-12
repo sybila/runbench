@@ -30,7 +30,7 @@ lets say we want to test the performance of the following *callable* (ensure it 
 you can do so by running
 
 ```sh
-cargo run -- run --run-name "your_run_name" --dir-path ./demo/dataset --command "./demo/your_program @bench_file"
+cargo run -- run --run-name "your_run_name" --dir-path ./demo/dataset --command "./demo/your_program.sh @bench_file"
 ```
 
 ## inspecting the results
