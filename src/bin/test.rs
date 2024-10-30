@@ -9,10 +9,10 @@ async fn main() {
         test_command: vec!["sleep".to_string(), "@input".to_string()],
         input_data: vec!["./test-inputs/gen-powers.sh".to_string(), "5".to_string()],
         raw_output: None,
-        parallelism: 1,
-        repetitions: 1,
-        memory_limit: Some(1),
-        absolute_timeout: None,
+        parallelism: 4,
+        repetitions: 3,
+        memory_limit: Some(10),    // 10MB
+        absolute_timeout: Some(9), // 9s
     };
     // load the url at comptime
     let url = dotenvy_macro::dotenv!("DATABASE_URL");

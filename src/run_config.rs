@@ -61,11 +61,22 @@ pub struct RunConfig {
     /// are considered as completed to avoid running tests with errors forever.
     pub repetitions: usize,
 
-    /// The memory limit enforced for each child process, in `kB`. Note that this is currently
-    /// only supported on linux. On other operating systems, this does not do anything.
+    /// The memory limit enforced for each child process, in `MiB` (mibibytes). Note that this is
+    /// currently only supported on linux. On other operating systems, using memory limit produces
+    /// a warning message but otherwise does nothing.
+    ///
+    /// Memory limit has a few caveats:
+    ///  * Most programs nowadays need at least a few megabytes to start, especially
+    ///    since we are also running `time` and `timeout`.
+    ///  * The provided limit is the "soft" limit, hard limit is then set to 2x the soft limit.
+    ///  * Memory errors are very unpredictable and hard to detect in the output, so even if memory
+    ///    limit is applied, we generally don't differentiate between a generic "crash" and a
+    ///    a memory limit issue. However, on linux, we collect the memory consumption of the
+    ///    benchmarked process, so it is then possible to check which processes were
+    ///    near the memory limit during post-processing.
     ///
     /// Example: If set to `1024`, each benchmark will have a memory limit of roughly
-    /// one megabyte.
+    /// one gigabyte.
     pub memory_limit: Option<u64>,
 
     /// The maximum allowed amount of time spent computing a single benchmark, in seconds. If

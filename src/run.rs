@@ -37,18 +37,19 @@ impl PendingBenchmark {
                     if let Some(absolute_timeout) = config.absolute_timeout {
                         if self.current_timeout == absolute_timeout {
                             println!(
-                                "Benchmark `{}` timeout. Absolute limit ({}) reached, won't retry.",
+                                "Benchmark `{}` timeout. Absolute limit ({}s) reached, won't retry.",
                                 self.input, absolute_timeout
                             );
-                            self.remaining_repetitions = 0;
+                            self.remaining_repetitions = 0; // Skip all remaining repetitions.
+                            return true; // Early return to ensure we don't print the default message.
                         } else {
                             self.current_timeout = min(absolute_timeout, self.current_timeout * 2);
                         }
                     } else {
-                        self.current_timeout = self.current_timeout * 2;
+                        self.current_timeout *= 2;
                     }
                     println!(
-                        "Benchmark `{}` timeout. New timeout: {}.",
+                        "Benchmark `{}` timeout. New timeout: {}s.",
                         self.input, self.current_timeout
                     );
                 } else {
@@ -75,19 +76,13 @@ impl PendingBenchmark {
 
         // TODO: This is not dealing with command output in any way.
 
-        let command = config.command_interpolation(self.input.as_str());
-        println!(
-            "Starting (timeout {}s): {}",
-            self.current_timeout,
-            command.join(" ")
-        );
+        let bench_command = config.command_interpolation(self.input.as_str());
 
         let mut args = Vec::new();
         args.push("timeout".to_string());
         args.push(format!("{}s", self.current_timeout));
-        args.push("time".to_string());
-        args.push("-p".to_string());
-        args.extend(command);
+        args.extend(Self::build_time_command());
+        args.extend(bench_command.clone());
 
         let mut command = tokio::process::Command::new(args[0].as_str());
         command.args(&args[1..]);
@@ -95,6 +90,18 @@ impl PendingBenchmark {
 
         if let Some(mem_limit) = config.memory_limit {
             Self::set_memory_limit(&mut command, mem_limit);
+            println!(
+                "Starting (timeout {}s; memory limit {}MiB): {}",
+                self.current_timeout,
+                mem_limit,
+                bench_command.join(" ")
+            );
+        } else {
+            println!(
+                "Starting (timeout {}s): {}",
+                self.current_timeout,
+                bench_command.join(" ")
+            );
         }
 
         self.running_job = Some(command.spawn().unwrap());
@@ -109,7 +116,8 @@ impl PendingBenchmark {
     fn set_memory_limit(command: &mut tokio::process::Command, limit: u64) {
         unsafe {
             command.pre_exec(move || {
-                rlimit::setrlimit(rlimit::Resource::AS, limit * 1024, limit * 1024).unwrap();
+                let soft_limit = limit * 1024 * 1024;
+                rlimit::setrlimit(rlimit::Resource::AS, soft_limit, soft_limit * 2).unwrap();
                 Ok(())
             });
         }
@@ -118,6 +126,24 @@ impl PendingBenchmark {
     #[cfg(not(target_os = "linux"))]
     fn set_memory_limit(_command: &mut tokio::process::Command, _limit: u64) {
         println!("Memory limit is ignored. Not supported on this platform.");
+    }
+
+    #[cfg(target_os = "linux")]
+    fn build_time_command() -> Vec<String> {
+        vec!["time".to_string(), "-v".to_string()]
+    }
+
+    #[cfg(target_os = "macos")]
+    fn build_time_command() -> Vec<String> {
+        // Uses gnu time.
+        // TODO: Print a user-friendly error if gtime is not installed (brew install gnu-time).
+        vec!["gtime".to_string(), "-v".to_string()]
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    fn build_time_command() -> Vec<String> {
+        // Use "default" time command with standard posix output format.
+        vec!["time".to_string(), "-p".to_string()]
     }
 }
 
