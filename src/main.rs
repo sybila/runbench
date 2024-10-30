@@ -1,8 +1,7 @@
-use std::process::Output;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use sqlx::sqlite::SqlitePoolOptions;
+use std::process::Output;
 
 const FILE_PLACEHOLDER: &str = "@bench_file";
 
